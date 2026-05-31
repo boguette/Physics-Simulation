@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Differential Equations Showcase</title>
+<style>
+  :root{
+    --bg:#f6f4ef; --panel:#ffffff; --ink:#222; --muted:#666; --line:#ddd7cc;
+    --accent:#185FA5; --accent2:#EF9F27; --green:#1D9E75; --purple:#7F77DD;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--bg:#0d1117; --panel:#161b22; --ink:#e6edf3; --muted:#9aa4af; --line:#30363d;}
+  }
+  *{box-sizing:border-box}
+  
+  body{
+  margin:0;
+  background: linear-gradient(180deg, #000000 0%, #4c4e65d3 100%);
+  color:var(--ink);
+  font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+
+  min-height:100vh;
+}
+  .wrap{max-width:1400px;margin:0 auto;padding:18px}
+
+  h1{font-size:26px;margin:0 0 6px}
+
+
+  h2{font-size:16px;margin:0 0 8px}
+
+  p{margin:6px 0;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:2.3fr .7fr;gap:14px;align-items:start}
+
+
+  .card{
+  background:rgba(22,27,34,.88);
+  backdrop-filter:blur(10px);
+  border:none;
+  border-radius:16px;
+  padding:14px;
+  box-shadow:0 12px 40px rgba(0,0,0,.35),0 0 20px rgba(55,138,221,.08);
+}
+  #simcanvas{
+  display:block;
+  width:100%;
+  height:auto;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.12);
+  background:#0d1117;
+}
+  .ctrl{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:13px}
+  label{display:flex;gap:6px;align-items:center}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+  button{
+  font:inherit;
+  font-size:13px;
+  padding:6px 11px;
+  border-radius:10px;
+  border:none;
+  background:#52606e;
+  color:white;
+  cursor:pointer;
+  transition:transform .18s ease,filter .18s ease,box-shadow .18s ease;
+}
+  button:hover{
+  filter:brightness(1.25);
+  transform:translateY(-2px);
+}
+button:active{transform:translateY(0);}
+button.active{filter:brightness(1.15);}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.tabs button{padding:7px 10px}.tabs button.sel{
+  background:linear-gradient(135deg,#3798dd,#182fa5);
+  color:white;
+  box-shadow:0 0 16px rgba(40, 125, 211, 0.45);
+}
+  .equation{font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;background:rgba(127,127,127,.09);border-radius:12px;padding:10px;margin:8px 0;white-space:pre-wrap;color:var(--ink)}
+  .readout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}.pill{border:none;border-radius:12px;padding:8px;background:rgba(255,255,255,.05);backdrop-filter:blur(8px)}
+  .pill b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  .barwrap{height:8px;background:rgba(127,127,127,.14);border-radius:99px;overflow:hidden;flex:1;min-width:120px}.bar{height:100%;width:0;background:var(--accent2);transition:width .25s}
+  .small{font-size:12px}.legend{display:flex;gap:10px;flex-wrap:wrap}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}.wrap{padding:10px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Differential Equations in Motion</h1>
+  <p>This interactive model shows the core idea: a differential equation gives a rule for acceleration, and the computer repeatedly uses that rule to update velocity and position.</p>
+
+  <div class="grid">
+    <section class="card">
+      <svg id="simcanvas" viewBox="0 0 680 400" width="900" height="530" role="img" aria-label="Differential equation simulation"></svg>
+      <div class="ctrl">
+        <label>Model:
+          <select id="model">
+            <option value="spring">Simple oscillator</option>
+            <option value="coupled">Coupled oscillators</option>
+            <option value="gravity" selected>Gravitational bodies</option>
+          </select>
+        </label>
+        <label id="bodiesControl">Bodies:
+          <input type="range" id="nbodies" min="1" max="8" value="3" step="1" style="width:82px">
+          <span id="nb-label" class="mono">3</span>
+        </label>
+        <label>Speed:<input type="range" id="speed" min="0.2" max="3" value="1" step="0.1" style="width:76px"></label>
+        <label>Trails:<input type="range" id="trail" min="0" max="320" value="140" step="10" style="width:76px"></label>
+        <label>Vectors:<input type="checkbox" id="vectors" checked></label>
+        <button onclick="reset()">↺ Reset</button>
+        <button id="btnPause" onclick="togglePause()">⏸ Pause</button>
+      </div>
+      <div class="ctrl" id="chaosRow">
+        <span>Lyapunov divergence:</span><div class="barwrap"><div class="bar" id="cbar"></div></div>
+        <span class="mono small" id="chaos-label">measuring...</span>
+      </div>
+    </section>
+
+    <aside class="card">
+      <h2>What the equation is doing</h2>
+      <div class="tabs">
+        <button id="tabRule" class="sel" onclick="setTab('rule')">1. Rule</button>
+        <button id="tabStep" onclick="setTab('step')">2. Step</button>
+        <button id="tabWhy" onclick="setTab('why')">3. Meaning</button>
+      </div>
+      <div id="explain"></div>
+      <div class="readout">
+        <div class="pill"><b>time</b><span id="timeRead" class="mono">0.00 s</span></div>
+        <div class="pill"><b>state size</b><span id="stateRead" class="mono">--</span></div>
+        <div class="pill"><b>sample x</b><span id="xRead" class="mono">--</span></div>
+        <div class="pill"><b>sample dx/dt</b><span id="vRead" class="mono">--</span></div>
+      </div>
+      <p class="small">The dots are not following pre-drawn paths. Their paths emerge from repeated numerical integration of the differential equations.</p>
+    </aside>
+  </div>
+</div>
+<script>
+
+const svg=document.getElementById('simcanvas');
+const W=680,H=400,COLS=['#1D9E75','#EF9F27','#7F77DD','#D85A30','#D4537E','#378ADD','#639922','#E24B4A'];
+let paused=false,last=null,t=0,mode='gravity',tab='rule';
+let bodies=[],trails=[],shadow=[],spring={x:160,v:0,x2:-120,v2:0},lyapSum=0,lyapN=0;
+const G=500;
+function dark(){return matchMedia && matchMedia('(prefers-color-scheme: dark)').matches}
+function mkB(x,y,vx,vy,m,c){return{x,y,vx,vy,m,c,ax:0,ay:0}}
+function S(tag,attrs={},parent=svg){
+  const el=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for(const [k,v] of Object.entries(attrs)) el.setAttribute(k,v);
+  parent.appendChild(el);
+  return el;
+}
+function clearSVG(){while(svg.firstChild)svg.removeChild(svg.firstChild)}
+function bg(){
+  clearSVG();
+  const defs=S('defs');
+  const marker=S('marker',{id:'arrowHead',markerWidth:10,markerHeight:10,refX:8,refY:3,orient:'auto',markerUnits:'strokeWidth'},defs);
+  S('path',{d:'M0,0 L0,6 L9,3 z',fill:'context-stroke'},marker);
+  S('rect',{x:0,y:0,width:W,height:H,fill:dark()?'#0d1117':'#f6f4ef'});
+}
+function model(){return document.getElementById('model').value}
+function reset(){
+  mode=model();t=0;last=null;lyapSum=0;lyapN=0;trails=[];bg();
+  document.getElementById('bodiesControl').style.display=mode==='gravity'?'flex':'none';
+  document.getElementById('chaosRow').style.display=mode==='gravity'?'flex':'none';
+  if(mode==='spring') spring={x:180,v:0,x2:0,v2:0};
+  if(mode==='coupled') spring={x:150,v:0,x2:-60,v2:0};
+  if(mode==='gravity') preset(+document.getElementById('nbodies').value);
+  explain(); draw();
+}
+function preset(n){
+  const cx=W/2,cy=H/2;bodies=[];
+  if(n===1)bodies=[mkB(cx,cy,0,0,80,COLS[0])];
+  else if(n===2){
+    const r=130,v=Math.sqrt(G*60/(2*r));
+    bodies=[mkB(cx-r,cy,0,v,60,COLS[0]),mkB(cx+r,cy,0,-v,60,COLS[1])]
+  } else {
+    const r=130;
+    for(let i=0;i<n;i++){
+      const a=i*2*Math.PI/n-Math.PI/2;
+      const wobble=n===3?1:(.9+Math.random()*.25);
+      const v=Math.sqrt(G*55/r)*.86*wobble;
+      bodies.push(mkB(W/2+r*Math.cos(a),H/2+r*Math.sin(a),-v*Math.sin(a),v*Math.cos(a),45+Math.random()*25,COLS[i%COLS.length]))
+    }
+  }
+  trails=bodies.map(()=>[]);
+  shadow=bodies.map(b=>({...b}));
+  if(shadow[0]){shadow[0].x+=.5;shadow[0].y+=.5}
+}
+function accel(bs){
+  bs.forEach(b=>b.ax=b.ay=0);
+  for(let i=0;i<bs.length;i++)for(let j=i+1;j<bs.length;j++){
+    let dx=bs[j].x-bs[i].x,dy=bs[j].y-bs[i].y,r2=dx*dx+dy*dy,r=Math.sqrt(r2)+1e-4,f=G/(r2+150);
+    bs[i].ax+=f*bs[j].m*dx/r;bs[i].ay+=f*bs[j].m*dy/r;
+    bs[j].ax-=f*bs[i].m*dx/r;bs[j].ay-=f*bs[i].m*dy/r
+  }
+}
+function integrateBodies(bs,dt){
+  accel(bs);
+  bs.forEach(b=>{
+    b.vx+=b.ax*dt;b.vy+=b.ay*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;
+    if(b.x<0||b.x>W)b.vx*=-.65;if(b.y<0||b.y>H)b.vy*=-.65;
+    b.x=Math.max(0,Math.min(W,b.x));b.y=Math.max(0,Math.min(H,b.y))
+  })
+}
+function integrateSpring(dt){
+  const k=.9,m=1,kc=.45;
+  if(mode==='spring'){let a=-(k/m)*spring.x;spring.v+=a*dt;spring.x+=spring.v*dt}
+  else{let a1=-(k+kc)*spring.x+kc*spring.x2;let a2=-(k+kc)*spring.x2+kc*spring.x;spring.v+=a1*dt;spring.v2+=a2*dt;spring.x+=spring.v*dt;spring.x2+=spring.v2*dt}
+}
+function lyap(){
+  if(bodies.length<3)return;
+  let d2=0;
+  for(let i=0;i<bodies.length;i++){let dx=bodies[i].x-shadow[i].x,dy=bodies[i].y-shadow[i].y;d2+=dx*dx+dy*dy}
+  let d=Math.sqrt(d2),d0=.5;
+  if(d>1e-12){
+    lyapSum+=Math.log(d/d0);lyapN++;
+    let sc=d0/d;
+    for(let i=0;i<shadow.length;i++){
+      shadow[i].x=bodies[i].x+(shadow[i].x-bodies[i].x)*sc;
+      shadow[i].y=bodies[i].y+(shadow[i].y-bodies[i].y)*sc;
+      shadow[i].vx=bodies[i].vx+(shadow[i].vx-bodies[i].vx)*sc;
+      shadow[i].vy=bodies[i].vy+(shadow[i].vy-bodies[i].vy)*sc
+    }
+  }
+}
+function vectorOn(){return document.getElementById('vectors')?.checked}
+function clampVec(dx,dy,maxLen){
+  const mag=Math.hypot(dx,dy);
+  if(!mag)return{dx:0,dy:0,mag:0};
+  const scale=Math.min(maxLen,mag)/mag;
+  return{dx:dx*scale,dy:dy*scale,mag};
+}
+function drawVector(x,y,dx,dy,color,label,opacity=.9){
+  const v=clampVec(dx,dy,72);
+  if(v.mag<.01)return;
+  const x2=x+v.dx,y2=y+v.dy;
+  S('line',{x1:x,y1:y,x2:x2,y2:y2,stroke:color,'stroke-width':2.4,'stroke-opacity':opacity,'stroke-linecap':'round','marker-end':'url(#arrowHead)'});
+  S('text',{x:x2+5,y:y2-5,fill:color,'fill-opacity':opacity,'font-size':11,'font-family':'ui-monospace,Consolas,monospace'}).textContent=label;
+}
+function drawDivergenceVector(b,s,color){
+  const dx=(b.x-s.x)*12,dy=(b.y-s.y)*12;
+  const v=clampVec(dx,dy,58);
+  if(v.mag<2)return;
+  S('line',{x1:b.x,y1:b.y,x2:b.x+v.dx,y2:b.y+v.dy,stroke:color,'stroke-width':1.8,'stroke-dasharray':'4 4','stroke-opacity':.55,'stroke-linecap':'round','marker-end':'url(#arrowHead)'});
+}
+function drawMass(x,y,c,label){
+  S('circle',{cx:x,cy:y,r:22,fill:c});
+  S('text',{x:x,y:y+5,'text-anchor':'middle',fill:'white','font-size':14,'font-weight':'700','font-family':'system-ui'},svg).textContent=label;
+}
+function drawSpring(){
+  bg();
+  const y=H/2,wall=80,scale=.75,stroke=dark()?'#8b949e':'#666';
+  S('line',{x1:30,y1:y+45,x2:W-30,y2:y+45,stroke:stroke,'stroke-width':2});
+  const x1=wall+220+spring.x*scale;
+  drawMass(x1,y,COLS[0],'x₁');
+  if(vectorOn()){
+    const a1=mode==='spring'?-.9*spring.x:-1.35*spring.x+.45*spring.x2;
+    drawVector(x1,y-28,spring.v*scale*.55,0,COLS[0],'dx/dt',.85);
+    drawVector(x1,y+28,a1*scale*.85,0,'#E24B4A','d²x/dt²',.9);
+  }
+  if(mode==='coupled'){
+    const x2=wall+420+spring.x2*scale;
+    drawMass(x2,y,COLS[1],'x₂');
+    if(vectorOn()){
+      const a2=-1.35*spring.x2+.45*spring.x;
+      drawVector(x2,y-28,spring.v2*scale*.55,0,COLS[1],'dx/dt',.85);
+      drawVector(x2,y+28,a2*scale*.85,0,'#E24B4A','d²x/dt²',.9);
+    }
+  }
+  const fill=dark()?'rgba(255,255,255,.72)':'rgba(0,0,0,.62)';
+  S('text',{x:20,y:28,fill:fill,'font-size':13,'font-family':'ui-monospace,Consolas,monospace'}).textContent=mode==='spring'?'x¨ = -(k/m)x':'x¨₁ = -((k+k꜀)/m)x₁ + (k꜀/m)x₂';
+  if(mode==='coupled')S('text',{x:20,y:48,fill:fill,'font-size':13,'font-family':'ui-monospace,Consolas,monospace'}).textContent='x¨₂ = -((k+k꜀)/m)x₂ + (k꜀/m)x₁';
+}
+function drawGravity(){
+  bg();
+  const maxT=+document.getElementById('trail').value;
+  bodies.forEach((b,i)=>{
+    let tr=trails[i];
+    if(tr.length>1){
+      const d=tr.map((p,j)=>(j?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+      S('path',{d:d,fill:'none',stroke:b.c,'stroke-opacity':dark()?'.42':'.34','stroke-width':'1.5','stroke-linecap':'round','stroke-linejoin':'round'});
+    }
+    let r=Math.cbrt(b.m)*2;
+    if(vectorOn()){
+      drawVector(b.x,b.y,b.vx*.28,b.vy*.28,b.c,'v = dr/dt',.82);
+      drawVector(b.x,b.y,b.ax*3.8,b.ay*3.8,'#E24B4A','a = d²r/dt²',.9);
+      if(shadow[i]&&bodies.length>=3)drawDivergenceVector(b,shadow[i],'#F5D547');
+    }
+    S('circle',{cx:b.x,cy:b.y,r:r+5,fill:b.c,'fill-opacity':'.16'});
+    S('circle',{cx:b.x,cy:b.y,r:r,fill:b.c});
+    S('text',{x:b.x+r+3,y:b.y-r,fill:dark()?'rgba(255,255,255,.72)':'rgba(0,0,0,.62)','font-size':11,'font-family':'ui-monospace,Consolas,monospace'}).textContent='m'+(i+1);
+  });
+  S('text',{x:20,y:28,fill:dark()?'rgba(255,255,255,.72)':'rgba(0,0,0,.62)','font-size':13,'font-family':'ui-monospace,Consolas,monospace'}).textContent='r¨ᵢ = -G Σⱼ≠ᵢ mⱼ(rᵢ-rⱼ)/|rᵢ-rⱼ|³';
+  if(vectorOn()){
+    S('text',{x:20,y:48,fill:'#E24B4A','font-size':12,'font-family':'ui-monospace,Consolas,monospace'}).textContent='red arrows: acceleration field created by the ODE';
+    S('text',{x:20,y:66,fill:'#F5D547','font-size':12,'font-family':'ui-monospace,Consolas,monospace'}).textContent='dashed yellow: growing separation from a tiny initial change';
+  }
+}
+function draw(){mode==='gravity'?drawGravity():drawSpring();updateReadouts()}
+function step(dt){
+  if(mode==='gravity'){
+    for(let s=0;s<4;s++){integrateBodies(bodies,dt/4);integrateBodies(shadow,dt/4)}
+    lyap();
+    let maxT=+document.getElementById('trail').value;
+    bodies.forEach((b,i)=>{trails[i].push({x:b.x,y:b.y});if(trails[i].length>maxT)trails[i].shift()});
+    let lam=lyapN?lyapSum/lyapN:0,pct=Math.max(0,Math.min(100,lam/2.5*100));
+    document.getElementById('cbar').style.width=pct+'%';
+    document.getElementById('chaos-label').textContent=bodies.length<3?'stable / closed':'λ ≈ '+lam.toFixed(3)
+  } else integrateSpring(dt);
+  t+=dt
+}
+function loop(ts){
+  if(!paused){
+    if(last!==null){let dt=Math.min((ts-last)/1000,.025)*(+document.getElementById('speed').value);step(dt)}
+    last=ts;draw()
+  }
+  requestAnimationFrame(loop)
+}
+function togglePause(){
+  paused=!paused;
+  let b=document.getElementById('btnPause');
+  b.classList.toggle('active',paused);
+  b.textContent=paused?'▶ Resume':'⏸ Pause';
+  if(!paused)last=null
+}
+function setTab(x){tab=x;explain()}
+function explain(){
+  ['Rule','Step','Why'].forEach(n=>document.getElementById('tab'+n).classList.toggle('sel',tab===n.toLowerCase()));
+  let e=document.getElementById('explain');let m=model();
+  let rule=m==='spring'
+    ? 'x¨ + (k/m)x = 0'
+    : m==='coupled'
+      ? `x¨₁ + ((k+k꜀)/m)x₁ - (k꜀/m)x₂ = 0\nx¨₂ + ((k+k꜀)/m)x₂ - (k꜀/m)x₁ = 0`
+      : 'r¨ᵢ = -G Σⱼ≠ᵢ mⱼ(rᵢ-rⱼ)/|rᵢ-rⱼ|³';
+  let step=`acceleration = f(position, velocity, time)\nvelocity += acceleration × Δt\nposition += velocity × Δt`;
+  let why=m==='gravity'?'Gravity is nonlinear because force depends on 1/r² and direction changes with every body. The red acceleration arrows bend each path in real time; the dashed yellow vectors show how a tiny initial difference stretches into chaotic divergence.':'This system is linear, so motion can be broken into sine/cosine normal modes and solved exactly. The arrows separate velocity from acceleration so you can see the ODE updating the state.';
+  e.innerHTML=tab==='rule'?`<p>The differential equation states how curvature of motion changes. In mechanics, curvature is acceleration.</p><div class="equation">${rule}</div>`:tab==='step'?`<p>The simulation uses numerical integration. Each animation frame takes many tiny time steps.</p><div class="equation">${step}</div>`:`<p>${why}</p><div class="equation">Linear ODE → predictable modes
+Nonlinear ODE → possible chaos</div>`
+}
+function updateReadouts(){
+  document.getElementById('timeRead').textContent=t.toFixed(2)+' s';
+  if(mode==='gravity'){
+    let b=bodies[0]||{x:0,vx:0};
+    document.getElementById('stateRead').textContent=(bodies.length*4)+' variables';
+    document.getElementById('xRead').textContent=b.x.toFixed(1)+' px';
+    document.getElementById('vRead').textContent=b.vx.toFixed(2)+' px/s'
+  } else {
+    document.getElementById('stateRead').textContent=mode==='spring'?'2 variables':'4 variables';
+    document.getElementById('xRead').textContent=spring.x.toFixed(2);
+    document.getElementById('vRead').textContent=spring.v.toFixed(2)
+  }
+}
+document.getElementById('model').onchange=reset;
+document.getElementById('nbodies').oninput=e=>{document.getElementById('nb-label').textContent=e.target.value;reset()};
+document.getElementById('vectors').onchange=draw;
+reset();requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
