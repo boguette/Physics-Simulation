@@ -199,11 +199,28 @@ input[type="number"]{
 </style>
 <script>
 
-const svg=document.getElementById('simcanvas');
-const W=680,H=400,COLS=['#1D9E75','#EF9F27','#7F77DD','#D85A30','#D4537E','#378ADD','#639922','#E24B4A'];
+//use command+f or control+f to find methods used in the simulation.
+//lots of the equations used were a transfer from calculus to algebraic 
+
+const svg = document.getElementById('simcanvas');
+
+//W=width, H=height
+const W=680,H=400,
+COLS=['#1D9E75','#EF9F27','#7F77DD','#D85A30','#D4537E','#378ADD','#639922','#E24B4A'];
+
+//button variables for user interface operations
 let paused=false,last=null,t=0,mode='gravity',tab='rule';
+
+//button 
 let bodies=[],trails=[],shadow=[],spring={x:160,v:0,x2:-120,v2:0},lyapSum=0,lyapN=0;
-const G=500;
+
+
+const G=500; //gravitational constant (measurement is appropriate for the pixel movements on the screen)
+/*
+The gravitational constant in Newtonian Physics would make it barely move.
+Using 500 is optional and can be changed with no effect; its enough for the audience to see.
+*/
+
 function totalMassCompilation(){
   const input=document.getElementById('nbodies');
   const n=Math.max(1, Math.round(Number(input.value) || 1));
@@ -235,6 +252,11 @@ function model(){
   
 }
 function reset(){
+
+  /*
+  Resets all interior variables to original states (position, velocity, etc...)
+  */
+
   mode=model();t=0;last=null;lyapSum=0;lyapN=0;trails=[];bg();
   document.getElementById('bodiesControl').style.display=mode==='gravity'?'flex':'none';
   document.getElementById('chaosRow').style.display=mode==='gravity'?'flex':'none';
@@ -258,24 +280,34 @@ function preset(n){
       bodies.push(mkB(W/2+r*Math.cos(a),H/2+r*Math.sin(a),-v*Math.sin(a),v*Math.cos(a),45+Math.random()*25,COLS[i%COLS.length]))
     }
   }
-  trails=bodies.map(()=>[]);
+  trails=bodies.map(()=>[]); //just restate convert
   shadow=bodies.map(b=>({...b}));
   if(shadow[0])
   {shadow[0].x+=.5;shadow[0].y+=.5
 
   }
 }
-function accel(bs){
+
+//integration of simulation movement and stamina
+
+
+function acceleration(bs){
   bs.forEach(b=>b.ax=b.ay=0);
   for(let i=0;i<bs.length;i++)for(let j=i+1;j<bs.length;j++){
+
     let dx=bs[j].x-bs[i].x,dy=bs[j].y-bs[i].y,r2=dx*dx+dy*dy,r=Math.sqrt(r2)+1e-4,f=G/(r2+150);
-    bs[i].ax+=f*bs[j].m*dx/r;bs[i].ay+=f*bs[j].m*dy/r;
-    bs[j].ax-=f*bs[i].m*dx/r;bs[j].ay-=f*bs[i].m*dy/r
+
+    bs[i].ax+=f*bs[j].m * dx/r;bs[i].ay+=f*bs[j].m*dy/r;
+    bs[j].ax-=f*bs[i].m * dx/r;bs[j].ay-=f*bs[i].m*dy/r
+
   }
 }
 function integrateBodies(bs,dt){
-  accel(bs);
+
+  acceleration(bs);
+
   bs.forEach(b=>{
+
     b.vx+=b.ax*dt;b.vy+=b.ay*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;
     if(b.x<0||b.x>W)b.vx*=-.65;if(b.y<0||b.y>H)b.vy*=-.65;
     b.x=Math.max(0,Math.min(W,b.x));b.y=Math.max(0,Math.min(H,b.y))
@@ -290,7 +322,7 @@ function integrateSpring(dt){
 
 
 //this function is 
-function lyap(){
+function objectCount(){
   if(bodies.length < 3)
   return;
   let d2 = 0;
@@ -310,12 +342,12 @@ function lyap(){
     }
   }
 }
-function drawMass(x,y,c,label){
-  S('circle',{cx:x,cy:y,r:22,fill:c});
+function drawMass(x, y, c,label){
+  S('circle',{cx:x,cy:y,r:22,fill:c}); //draw circle
   S('text',{x:x,y:y+5,'text-anchor':'middle',fill:'white','font-size':14,'font-weight':'700','font-family':'system-ui'},svg).textContent=label;
 }
-function drawSpring(){
-  bg();
+function drawSpring(){ //this is an invisible stroke but this is what is on the presentatio
+  bg(); //set invisible
   const y=H/2,wall=80,scale=.75,stroke=dark()?'#8b949e':'#666';
   S('line',{x1:30,y1:y+45,x2:W-30,y2:y+45,stroke:stroke,'stroke-width':2});
   drawMass(wall+220+spring.x*scale,y,COLS[0],'x₁');
@@ -324,53 +356,77 @@ function drawSpring(){
   S('text',{x:20,y:28,fill:fill,'font-size':13,'font-family':'ui-monospace,Consolas,monospace'}).textContent=mode==='spring'?'x¨ = -(k/m)x':'x¨₁ = -((k+k꜀)/m)x₁ + (k꜀/m)x₂';
   if(mode==='coupled')S('text',{x:20,y:48,fill:fill,'font-size':13,'font-family':'ui-monospace,Consolas,monospace'}).textContent='x¨₂ = -((k+k꜀)/m)x₂ + (k꜀/m)x₁';
 }
-function drawGravity(){
+function drawGravity(){ //converted from 
   bg();
+
   const maxT=+document.getElementById('trail').value;
-  bodies.forEach((b,i)=>{
+
+  bodies.forEach((b,i)=>
+  {
+
     let tr=trails[i];
+
     if(tr.length>1){
       const d=tr.map((p,j)=>(j?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
-      S('path',{d:d,fill:'none',stroke:b.c,'stroke-opacity':dark()?'.42':'.34','stroke-width':'1.5','stroke-linecap':'round','stroke-linejoin':'round'});
+      S('path',{d:d,fill:'none',stroke:b.c,'stroke-opacity': dark()?'.42':'.34','stroke-width':'1.5','stroke-linecap':'round','stroke-linejoin':'round'});
     }
-    let r=Math.cbrt(b.m)*2;
+    
+    let r = Math.cbrt(b.m) * 2;
     S('circle',{cx:b.x,cy:b.y,r:r+5,fill:b.c,'fill-opacity':'.16'});
     S('circle',{cx:b.x,cy:b.y,r:r,fill:b.c});
     S('text',{x:b.x+r+3,y:b.y-r,fill:dark()?'rgba(255,255,255,.72)':'rgba(0,0,0,.62)','font-size':11,'font-family':'ui-monospace,Consolas,monospace'}).textContent='m'+(i+1);
   });
   S('text',{x:20,y:28,fill:dark()?'rgba(255,255,255,.72)':'rgba(0,0,0,.62)','font-size':13,'font-family':'ui-monospace,Consolas,monospace'}).textContent='r¨ᵢ = -G Σⱼ≠ᵢ mⱼ(rᵢ-rⱼ)/|rᵢ-rⱼ|³';
 }
-function draw(){mode==='gravity'?drawGravity():drawSpring();updateReadouts()}
+function draw(){mode === 'gravity'?drawGravity():drawSpring();updateReadouts()}
+
 function step(dt){
-  if(mode==='gravity'){
-    for(let s=0;s<4;s++){integrateBodies(bodies,dt/4);integrateBodies(shadow,dt/4)}
-    lyap();
-    let maxT=+document.getElementById('trail').value;
+  if(mode === 'gravity'){
+    for(let s = 0;s < 4;s++) {
+      integrateBodies(bodies,dt/4);integrateBodies(shadow,dt/4)
+    }
+
+    objectCount();
+
+    let maxT =+ document.getElementById('trail').value;
+    let lam = lyapN?lyapSum/lyapN:0,pct=Math.max(0,Math.min(100,lam/2.5*100)); //this inverts structure methodology
+
     bodies.forEach((b,i)=>{trails[i].push({x:b.x,y:b.y});if(trails[i].length>maxT)trails[i].shift()});
-    let lam=lyapN?lyapSum/lyapN:0,pct=Math.max(0,Math.min(100,lam/2.5*100));
+
     document.getElementById('cbar').style.width=pct+'%';
     document.getElementById('chaos-label').textContent=bodies.length<3?'stable / closed':'λ ≈ '+lam.toFixed(3)
-  } else integrateSpring(dt);
+
+  } else integrateSpring(dt); //deriviation to time composite
   t+=dt
 }
 function loop(ts){
-  if(paused==false){
-    if(last!==null)
+  if(paused == false){
+
+    if(last!== null)
     {
-      let dt=Math.min((ts-last)/1000,.025)*simSpeed();step(dt)
+      let dt=Math.min((ts-last)/1000,.025)*simSpeed();
+      step(dt)
     }
     last=ts;
 
     draw()
+
   }
   requestAnimationFrame(loop)
 }
+
+
+
 function togglePause(){
+
+
   paused=!paused;
   let b=document.getElementById('btnPause');
   b.classList.toggle('active',paused);
   b.textContent=paused?'▶ Resume':'⏸ Pause';
-  if(!paused)last=null
+  if(!paused)last 
+  = null
+
 }
 function updateReadouts(){
   document.getElementById('timeRead').textContent=t.toFixed(2)+' s';
