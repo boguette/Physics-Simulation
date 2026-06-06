@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Differential Equations Simulation</title>
+<style>
+  :root{
+    --bg:#f6f4ef; --panel:#ffffff; --ink:#222; --muted:#666; --line:#ddd7cc;
+    --accent:#185FA5; --accent2:#EF9F27; --green:#1D9E75; --purple:#7F77DD;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--bg:#0d1117; --panel:#161b22; --ink:#e6edf3; --muted:#9aa4af; --line:#30363d;}
+  }
+  *{box-sizing:border-box}
+  
+  body{
+  margin:0;
+  background: linear-gradient(180deg, #000000 0%, #4c4e65d3 100%);
+  color:var(--ink);
+  font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+
+  min-height:100vh;
+}
+  .wrap{max-width:1400px;margin:0 auto;padding:18px}
+
+  h1{font-size:26px;margin:0 0 6px}
+
+  h2{font-size:16px;margin:0 0 8px}
+
+  p{margin:6px 0;color:var(--muted)}
+  .grid{display:block}
+
+select{
+  padding-right:36px;
+  cursor:pointer;
+
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 20 20'%3E%3Cpath fill='%239aa4af' d='M5 7l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+}
+
+select:hover,
+input[type="number"]:hover{
+  background:rgba(255,255,255,.09);
+  border-color:rgba(55,138,221,.45);
+  transform:translateY(-1px);
+}
+
+select:focus,
+input[type="number"]:focus{
+  outline:none;
+  border-color:#378ADD;
+  box-shadow:
+    0 0 0 3px rgba(55,138,221,.18),
+    0 0 18px rgba(55,138,221,.25);
+}
+
+select option{
+  background:#161b22;
+  color:#e6edf3;
+}
+
+.ctrl label{
+  font-weight:500;
+  color:#c7d0db;
+  gap:8px;
+}
+
+input[type="range"]{
+  accent-color:#378ADD;
+  cursor:pointergb(110, 166, 221)
+}
+
+  .card{
+  background:rgba(54, 70, 91, 0.88);
+  backdrop-filter:blur(10px);
+  border:none;
+  border-radius:16px;
+  padding:14px;
+  box-shadow:0 12px 40px rgba(0,0,0,.35),0 0 20px rgba(55,138,221,.08);
+}
+  #simcanvas{
+  display:block;
+  width:100%;
+  height:auto;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.12);
+  background:#0d1117;
+}
+
+  .ctrl{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-top:10px;
+    color:var(--muted);
+    font-size:13px
+  }
+  label{
+    display:flex;
+    gap:6px;
+    align-items:center}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace
+    }
+
+
+  button{
+  font:inherit;
+  font-size:13px;
+  padding:6px 11px;
+  border-radius:10px;
+  border:none;
+  background:#52606e;
+  color:white;
+  cursor:pointer;
+  transition:transform .18s ease,filter .18s ease,box-shadow .18s ease;
+}
+  button:hover{
+  filter:brightness(1.25);
+  transform:translateY(-2px);
+}
+button:active{transform:translateY(0);}
+button.active{filter:brightness(1.15);}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.tabs button{padding:7px 10px}.tabs button.sel{
+  background:linear-gradient(135deg,#3798dd,#182fa5);
+  color:white;
+  box-shadow:0 0 16px rgba(40, 125, 211, 0.45);
+}
+  .equation{font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;background:rgba(127,127,127,.09);border-radius:12px;padding:10px;margin:8px 0;white-space:pre-wrap;color:var(--ink)}
+  .readout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}.pill{border:none;border-radius:12px;padding:8px;background:rgba(255,255,255,.05);backdrop-filter:blur(8px)}
+  .pill b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  .barwrap{height:8px;background:rgba(127,127,127,.14);border-radius:99px;overflow:hidden;flex:1;min-width:120px}.bar{height:100%;width:0;background:var(--accent2);transition:width .25s}
+  .small{font-size:12px}.legend{display:flex;gap:10px;flex-wrap:wrap}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}.wrap{padding:10px}}
+</style>
+
+</head>
+
+<body>
+<div class="wrap">
+  <h1>Differential Equations in Motion</h1>
+  <p>This simulation shows how you can simulate a prediction model of what previous physicists were unable to account for.</p>
+
+  <div class="grid">
+    <section class="card">
+      <svg id="simcanvas" viewBox="0 0 680 400" width="900" height="530" role="img" aria-label="Differential equation simulation"></svg>
+      <div class="ctrl">
+        <label>Model:
+          <select id="model">
+            <option value="spring">Simple oscillator</option>
+            <option value="coupled">Coupled oscillators</option>
+            <option value="gravity" selected>Gravitational bodies</option>
+          </select>
+        </label>
+        <label id="bodiesControl">Masses:
+          <input type="number" id="nbodies" min="1" value="3" step="1" style="width:72px">
+        </label>
+        <label>Speed:
+          <input type="number" id="speed" min="0.1" value="1" step="0.1" style="width:72px">
+        </label>
+        <label>Trails:<input type="range" id="trail" min="0" max="320" value="140" step="10" style="width:76px"></label>
+        <button onclick="reset()">↺ Reset</button>
+        <button id="btnPause" onclick="togglePause()">⏸ Pause</button>
+        <span class="mono" style="color:#c7d0db;font-size:13px">t = <span id="timeRead">0.00 s</span></span>
+      </div>
+      <div class="ctrl" id="chaosRow">
+        <span>Lyapunov divergence:</span><div class="barwrap"><div class="bar" id="cbar"></div></div>
+        <span class="mono small" id="chaos-label">measuring...</span>
+      </div>
+    </section>
+
+
+  </div>
+</div>
+
+
+<style>
+  select,
+input[type="number"]{
+  appearance:none;
+  -webkit-appearance:none;
+
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  color:var(--ink);
+
+  padding:8px 12px;
+  border-radius:10px;
+
+  font:500 13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+
+  transition:
+    border-color .2s ease,
+    box-shadow .2s ease,
+    transform .15s ease,
+    background .2s ease;
+}
+</style>
+<script>
+
+const svg=document.getElementById('simcanvas');
+const W=680,H=400,COLS=['#1D9E75','#EF9F27','#7F77DD','#D85A30','#D4537E','#378ADD','#639922','#E24B4A'];
+let paused=false,last=null,t=0,mode='gravity',tab='rule';
+let bodies=[],trails=[],shadow=[],spring={x:160,v:0,x2:-120,v2:0},lyapSum=0,lyapN=0;
+const G=500;
+function totalMassCompilation(){
+  const input=document.getElementById('nbodies');
+  const n=Math.max(1, Math.round(Number(input.value) || 1));
+  input.value=n;
+  return n;
+}
+function simSpeed(){
+  const input=document.getElementById('speed');
+  const s=Math.max(0.1, Number(input.value) || 1);
+  input.value=s;
+  return s;
+}
+function dark(){return matchMedia && matchMedia('(prefers-color-scheme: dark)').matches}
+function mkB(x,y,vx,vy,m,c){return{x,y,vx,vy,m,c,ax:0,ay:0}}
+function S(tag,attrs={},parent=svg){
+  const el=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for(const [k,v] of Object.entries(attrs)) el.setAttribute(k,v);
+  parent.appendChild(el);
+  return el;
+}
+function clearSVG(){while(svg.firstChild)svg.removeChild(svg.firstChild)}
+function bg(){
+  clearSVG();
+  S('rect',{x:0,y:0,width:W,height:H,fill:dark()?'#0d1117':'#f6f4ef'});
+}
+function model(){
+
+  return document.getElementById('model').value
+  
+}
+function reset(){
+  mode=model();t=0;last=null;lyapSum=0;lyapN=0;trails=[];bg();
+  document.getElementById('bodiesControl').style.display=mode==='gravity'?'flex':'none';
+  document.getElementById('chaosRow').style.display=mode==='gravity'?'flex':'none';
+  if(mode==='spring') spring={x:180,v:0,x2:0,v2:0};
+  if(mode==='coupled') spring={x:150,v:0,x2:-60,v2:0};
+  if(mode==='gravity') preset(totalMassCompilation());
+  draw();
+}
+function preset(n){
+  const cx=W/2,cy=H/2;bodies=[];
+  if(n===1)bodies=[mkB(cx,cy,0,0,80,COLS[0])];
+  else if(n===2){
+    const r=130,v=Math.sqrt(G*60/(2*r));
+    bodies=[mkB(cx-r,cy,0,v,60,COLS[0]),mkB(cx+r,cy,0,-v,60,COLS[1])]
+  } else {
+    const r=130;
+    for(let i=0;i<n;i++){
+      const a=i*2*Math.PI/n-Math.PI/2;
+      const wobble=n===3?1:(.9+Math.random()*.25);
+      const v=Math.sqrt(G*55/r)*.86*wobble;
+      bodies.push(mkB(W/2+r*Math.cos(a),H/2+r*Math.sin(a),-v*Math.sin(a),v*Math.cos(a),45+Math.random()*25,COLS[i%COLS.length]))
+    }
+  }
+  trails=bodies.map(()=>[]);
+  shadow=bodies.map(b=>({...b}));
+  if(shadow[0])
+  {shadow[0].x+=.5;shadow[0].y+=.5
+
+  }
+}
+function accel(bs){
+  bs.forEach(b=>b.ax=b.ay=0);
+  for(let i=0;i<bs.length;i++)for(let j=i+1;j<bs.length;j++){
+    let dx=bs[j].x-bs[i].x,dy=bs[j].y-bs[i].y,r2=dx*dx+dy*dy,r=Math.sqrt(r2)+1e-4,f=G/(r2+150);
+    bs[i].ax+=f*bs[j].m*dx/r;bs[i].ay+=f*bs[j].m*dy/r;
+    bs[j].ax-=f*bs[i].m*dx/r;bs[j].ay-=f*bs[i].m*dy/r
+  }
+}
+function integrateBodies(bs,dt){
+  accel(bs);
+  bs.forEach(b=>{
+    b.vx+=b.ax*dt;b.vy+=b.ay*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;
+    if(b.x<0||b.x>W)b.vx*=-.65;if(b.y<0||b.y>H)b.vy*=-.65;
+    b.x=Math.max(0,Math.min(W,b.x));b.y=Math.max(0,Math.min(H,b.y))
+  })
+}
+function integrateSpring(dt){
+  const k=.9,m=1,kc=.45;
+  if(mode==='spring'){let a=-(k/m)*spring.x;spring.v+=a*dt;spring.x+=spring.v*dt}
+  else{let a1=-(k+kc)*spring.x+kc*spring.x2;let a2=-(k+kc)*spring.x2+kc*spring.x;spring.v+=a1*dt;spring.v2+=a2*dt;spring.x+=spring.v*dt;spring.x2+=spring.v2*dt}
+}
+
+
+
+//this function is 
+function lyap(){
+  if(bodies.length < 3)
+  return;
+  let d2 = 0;
+  
+  for(let i = 0;i<bodies.length; i++){
+    let dx=bodies[i].x-shadow[i].x,dy=bodies[i].y-shadow[i].y;d2+=dx*dx+dy*dy
+  }
+  let d=Math.sqrt(d2),d0 = .5;
+  if(d>1e-12){
+    lyapSum+=Math.log(d/d0);lyapN++;
+    let sc=d0/d;
+    for(let i=0;i<shadow.length;i++){
+      shadow[i].x=bodies[i].x+(shadow[i].x-bodies[i].x)*sc;
+      shadow[i].y=bodies[i].y+(shadow[i].y-bodies[i].y)*sc;
+      shadow[i].vx=bodies[i].vx+(shadow[i].vx-bodies[i].vx)*sc;
+      shadow[i].vy=bodies[i].vy+(shadow[i].vy-bodies[i].vy)*sc
+    }
+  }
+}
+function drawMass(x,y,c,label){
+  S('circle',{cx:x,cy:y,r:22,fill:c});
+  S('text',{x:x,y:y+5,'text-anchor':'middle',fill:'white','font-size':14,'font-weight':'700','font-family':'system-ui'},svg).textContent=label;
+}
+function drawSpring(){
+  bg();
+  const y=H/2,wall=80,scale=.75,stroke=dark()?'#8b949e':'#666';
+  S('line',{x1:30,y1:y+45,x2:W-30,y2:y+45,stroke:stroke,'stroke-width':2});
+  drawMass(wall+220+spring.x*scale,y,COLS[0],'x₁');
+  if(mode==='coupled')drawMass(wall+420+spring.x2*scale,y,COLS[1],'x₂');
+  const fill=dark()?'rgba(255,255,255,.72)':'rgba(0,0,0,.62)';
+  S('text',{x:20,y:28,fill:fill,'font-size':13,'font-family':'ui-monospace,Consolas,monospace'}).textContent=mode==='spring'?'x¨ = -(k/m)x':'x¨₁ = -((k+k꜀)/m)x₁ + (k꜀/m)x₂';
+  if(mode==='coupled')S('text',{x:20,y:48,fill:fill,'font-size':13,'font-family':'ui-monospace,Consolas,monospace'}).textContent='x¨₂ = -((k+k꜀)/m)x₂ + (k꜀/m)x₁';
+}
+function drawGravity(){
+  bg();
+  const maxT=+document.getElementById('trail').value;
+  bodies.forEach((b,i)=>{
+    let tr=trails[i];
+    if(tr.length>1){
+      const d=tr.map((p,j)=>(j?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+      S('path',{d:d,fill:'none',stroke:b.c,'stroke-opacity':dark()?'.42':'.34','stroke-width':'1.5','stroke-linecap':'round','stroke-linejoin':'round'});
+    }
+    let r=Math.cbrt(b.m)*2;
+    S('circle',{cx:b.x,cy:b.y,r:r+5,fill:b.c,'fill-opacity':'.16'});
+    S('circle',{cx:b.x,cy:b.y,r:r,fill:b.c});
+    S('text',{x:b.x+r+3,y:b.y-r,fill:dark()?'rgba(255,255,255,.72)':'rgba(0,0,0,.62)','font-size':11,'font-family':'ui-monospace,Consolas,monospace'}).textContent='m'+(i+1);
+  });
+  S('text',{x:20,y:28,fill:dark()?'rgba(255,255,255,.72)':'rgba(0,0,0,.62)','font-size':13,'font-family':'ui-monospace,Consolas,monospace'}).textContent='r¨ᵢ = -G Σⱼ≠ᵢ mⱼ(rᵢ-rⱼ)/|rᵢ-rⱼ|³';
+}
+function draw(){mode==='gravity'?drawGravity():drawSpring();updateReadouts()}
+function step(dt){
+  if(mode==='gravity'){
+    for(let s=0;s<4;s++){integrateBodies(bodies,dt/4);integrateBodies(shadow,dt/4)}
+    lyap();
+    let maxT=+document.getElementById('trail').value;
+    bodies.forEach((b,i)=>{trails[i].push({x:b.x,y:b.y});if(trails[i].length>maxT)trails[i].shift()});
+    let lam=lyapN?lyapSum/lyapN:0,pct=Math.max(0,Math.min(100,lam/2.5*100));
+    document.getElementById('cbar').style.width=pct+'%';
+    document.getElementById('chaos-label').textContent=bodies.length<3?'stable / closed':'λ ≈ '+lam.toFixed(3)
+  } else integrateSpring(dt);
+  t+=dt
+}
+function loop(ts){
+  if(paused==false){
+    if(last!==null)
+    {
+      let dt=Math.min((ts-last)/1000,.025)*simSpeed();step(dt)
+    }
+    last=ts;
+
+    draw()
+  }
+  requestAnimationFrame(loop)
+}
+function togglePause(){
+  paused=!paused;
+  let b=document.getElementById('btnPause');
+  b.classList.toggle('active',paused);
+  b.textContent=paused?'▶ Resume':'⏸ Pause';
+  if(!paused)last=null
+}
+function updateReadouts(){
+  document.getElementById('timeRead').textContent=t.toFixed(2)+' s';
+}
+document.getElementById('model').onchange=reset;
+document.getElementById('nbodies').addEventListener('change', reset);
+document.getElementById('speed').addEventListener('change', simSpeed);
+reset();requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
